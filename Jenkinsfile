@@ -2,14 +2,13 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS'   // MUST match Global Tool Configuration name
+        nodejs 'NodeJS'
     }
 
     environment {
-        APP_NAME      = "race-devops"
-        BUILD_DIR     = "dist\\simple-dashboard"
-        TARGET_SERVER = "13.205.170.169"
-        TARGET_PATH   = "C:\\App\\race"
+        BUILD_DIR     = 'dist\\simple-dashboard'
+        TARGET_SERVER = '13.205.170.169'
+        TARGET_PATH   = 'C:\\App\\race'
     }
 
     stages {
@@ -34,7 +33,7 @@ pipeline {
 
         stage('Archive Artifacts') {
             steps {
-                archiveArtifacts artifacts: "${BUILD_DIR}\\**", fingerprint: true
+                archiveArtifacts artifacts: 'dist\\simple-dashboard\\**', fingerprint: true
             }
         }
 
@@ -51,27 +50,27 @@ pipeline {
                     )
                 ]) {
 
-                    /* ---------- WinRM cleanup on target server ---------- */
+                    /* ---------- Prepare IIS server ---------- */
                     powershell '''
                         $sec  = ConvertTo-SecureString $env:DEPLOY_PASS -AsPlainText -Force
                         $cred = New-Object System.Management.Automation.PSCredential($env:DEPLOY_USER, $sec)
 
                         Invoke-Command `
-                          -ComputerName "${env:TARGET_SERVER}" `
+                          -ComputerName '13.205.170.169' `
                           -Credential $cred `
                           -Authentication Basic `
                           -ScriptBlock {
-                              if (!(Test-Path "C:\\App\\race")) {
-                                  New-Item -ItemType Directory -Path "C:\\App\\race" | Out-Null
+                              if (!(Test-Path 'C:\\App\\race')) {
+                                  New-Item -ItemType Directory -Path 'C:\\App\\race' | Out-Null
                               }
-                              Remove-Item "C:\\App\\race\\*" -Recurse -Force -ErrorAction SilentlyContinue
+                              Remove-Item 'C:\\App\\race\\*' -Recurse -Force -ErrorAction SilentlyContinue
                           }
                     '''
 
-                    /* ---------- Copy build files to IIS server ---------- */
-                    bat """
-                        xcopy "${BUILD_DIR}\\*" "\\\\${TARGET_SERVER}\\C$\\App\\race\\" /E /Y /I
-                    """
+                    /* ---------- Copy files via SMB ---------- */
+                    bat '''
+                        xcopy "dist\\simple-dashboard\\*" "\\\\13.205.170.169\\C$\\App\\race\\" /E /Y /I
+                    '''
                 }
             }
         }
