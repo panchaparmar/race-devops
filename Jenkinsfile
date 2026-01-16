@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS'   // must EXACTLY match Global Tool Configuration name
+        nodejs 'NodeJS'
     }
 
     environment {
@@ -39,31 +39,44 @@ pipeline {
         }
 
         stage('Deploy to IIS') {
-    when {
-        branch 'main'
-    }
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'web01',
-            usernameVariable: 'DEPLOY_USER',
-            passwordVariable: 'DEPLOY_PASS'
-        )]) {
+            when {
+                branch 'main'
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'web01',
+                    usernameVariable: 'DEPLOY_USER',
+                    passwordVariable: 'DEPLOY_PASS'
+                )]) {
 
-            powershell '''
-                $sec = ConvertTo-SecureString $env:DEPLOY_PASS -AsPlainText -Force
-                $cred = New-Object System.Management.Automation.PSCredential($env:DEPLOY_USER, $sec)
+                    // Clean target directory on IIS server
+                    powershell '''
+                        $sec = ConvertTo-SecureString $env:DEPLOY_PASS -AsPlainText -Force
+                        $cred = New-Object System.Management.Automation.PSCredential($env:DEPLOY_USER, $sec)
 
-                Invoke-Command -ComputerName 13.205.170.169 -Credential $cred -ScriptBlock {
-                    if (!(Test-Path 'C:\\App\\race')) {
-                        New-Item -ItemType Directory -Path 'C:\\App\\race' | Out-Null
-                    }
-                    Remove-Item 'C:\\App\\race\\*' -Recurse -Force -ErrorAction SilentlyContinue
+                        Invoke-Command -ComputerName 13.205.170.169 -Credential $cred -ScriptBlock {
+                            if (!(Test-Path 'C:\\App\\race')) {
+                                New-Item -ItemType Directory -Path 'C:\\App\\race' | Out-Null
+                            }
+                            Remove-Item 'C:\\App\\race\\*' -Recurse -Force -ErrorAction SilentlyContinue
+                        }
+                    '''
+
+                    // Copy Angular build files to IIS server
+                    bat '''
+                    xcopy "dist\\simple-dashboard\\*" "\\\\13.205.170.169\\C$\\App\\race\\" /E /Y /I
+                    '''
                 }
-            '''
+            }
+        }
+    }
 
-            bat '''
-            xcopy "dist\\simple-dashboard\\*" "\\\\13.205.170.169\\C$\\App\\race\\" /E /Y /I
-            '''
+    post {
+        success {
+            echo '✅ Angular application deployed successfully to IIS'
+        }
+        failure {
+            echo '❌ Pipeline failed'
         }
     }
 }
