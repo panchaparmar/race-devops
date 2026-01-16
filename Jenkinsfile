@@ -39,44 +39,31 @@ pipeline {
         }
 
         stage('Deploy to IIS') {
-            when {
-                branch 'main'
-            }
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'web01',
-                    usernameVariable: 'DEPLOY_USER',
-                    passwordVariable: 'DEPLOY_PASS'
-                )]) {
-
-                    // ---- CLEAN TARGET FOLDER ON IIS SERVER ----
-                    bat """
-                    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-                    "\$sec = ConvertTo-SecureString '%DEPLOY_PASS%' -AsPlainText -Force; ^
-                     \$cred = New-Object System.Management.Automation.PSCredential('%DEPLOY_USER%', \$sec); ^
-                     Invoke-Command -ComputerName ${TARGET_SERVER} -Credential \$cred -ScriptBlock { ^
-                         if (!(Test-Path '${TARGET_PATH}')) { ^
-                             New-Item -ItemType Directory -Path '${TARGET_PATH}' | Out-Null ^
-                         }; ^
-                         Remove-Item '${TARGET_PATH}\\*' -Recurse -Force -ErrorAction SilentlyContinue ^
-                     }"
-                    """
-
-                    // ---- COPY BUILD FILES TO IIS SERVER ----
-                    bat '''
-                    xcopy "''' + BUILD_DIR + '''\\*" "\\\\''' + TARGET_SERVER + '''\\C$\\App\\race\\" /E /Y /I
-                    '''
-                }
-            }
-        }
+    when {
+        branch 'main'
     }
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'web01',
+            usernameVariable: 'DEPLOY_USER',
+            passwordVariable: 'DEPLOY_PASS'
+        )]) {
 
-    post {
-        success {
-            echo '✅ Angular application deployed successfully to IIS'
-        }
-        failure {
-            echo '❌ Pipeline failed'
+            powershell '''
+                $sec = ConvertTo-SecureString $env:DEPLOY_PASS -AsPlainText -Force
+                $cred = New-Object System.Management.Automation.PSCredential($env:DEPLOY_USER, $sec)
+
+                Invoke-Command -ComputerName 13.205.170.169 -Credential $cred -ScriptBlock {
+                    if (!(Test-Path 'C:\\App\\race')) {
+                        New-Item -ItemType Directory -Path 'C:\\App\\race' | Out-Null
+                    }
+                    Remove-Item 'C:\\App\\race\\*' -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            '''
+
+            bat '''
+            xcopy "dist\\simple-dashboard\\*" "\\\\13.205.170.169\\C$\\App\\race\\" /E /Y /I
+            '''
         }
     }
 }
