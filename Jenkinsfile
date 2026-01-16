@@ -2,12 +2,12 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS'
+        nodejs 'NodeJS'   // MUST match Global Tool Configuration name
     }
 
     environment {
         APP_NAME      = "race-devops"
-        BUILD_DIR     = "dist/simple-dashboard"
+        BUILD_DIR     = "dist\\simple-dashboard"
         TARGET_SERVER = "13.205.170.169"
         TARGET_PATH   = "C:\\App\\race"
     }
@@ -34,7 +34,7 @@ pipeline {
 
         stage('Archive Artifacts') {
             steps {
-                archiveArtifacts artifacts: "${BUILD_DIR}/**", fingerprint: true
+                archiveArtifacts artifacts: "${BUILD_DIR}\\**", fingerprint: true
             }
         }
 
@@ -43,29 +43,35 @@ pipeline {
                 branch 'main'
             }
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'web01',
-                    usernameVariable: 'DEPLOY_USER',
-                    passwordVariable: 'DEPLOY_PASS'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'web01',
+                        usernameVariable: 'DEPLOY_USER',
+                        passwordVariable: 'DEPLOY_PASS'
+                    )
+                ]) {
 
-                    // Clean target directory on IIS server
+                    /* ---------- WinRM cleanup on target server ---------- */
                     powershell '''
-                        $sec = ConvertTo-SecureString $env:DEPLOY_PASS -AsPlainText -Force
+                        $sec  = ConvertTo-SecureString $env:DEPLOY_PASS -AsPlainText -Force
                         $cred = New-Object System.Management.Automation.PSCredential($env:DEPLOY_USER, $sec)
 
-                        Invoke-Command -ComputerName 13.205.170.169 -Credential $cred -ScriptBlock {
-                            if (!(Test-Path 'C:\\App\\race')) {
-                                New-Item -ItemType Directory -Path 'C:\\App\\race' | Out-Null
-                            }
-                            Remove-Item 'C:\\App\\race\\*' -Recurse -Force -ErrorAction SilentlyContinue
-                        }
+                        Invoke-Command `
+                          -ComputerName "${env:TARGET_SERVER}" `
+                          -Credential $cred `
+                          -Authentication Basic `
+                          -ScriptBlock {
+                              if (!(Test-Path "C:\\App\\race")) {
+                                  New-Item -ItemType Directory -Path "C:\\App\\race" | Out-Null
+                              }
+                              Remove-Item "C:\\App\\race\\*" -Recurse -Force -ErrorAction SilentlyContinue
+                          }
                     '''
 
-                    // Copy Angular build files to IIS server
-                    bat '''
-                    xcopy "dist\\simple-dashboard\\*" "\\\\13.205.170.169\\C$\\App\\race\\" /E /Y /I
-                    '''
+                    /* ---------- Copy build files to IIS server ---------- */
+                    bat """
+                        xcopy "${BUILD_DIR}\\*" "\\\\${TARGET_SERVER}\\C$\\App\\race\\" /E /Y /I
+                    """
                 }
             }
         }
@@ -73,10 +79,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Angular application deployed successfully to IIS'
+            echo '✅ Deployment completed successfully'
         }
         failure {
-            echo '❌ Pipeline failed'
+            echo '❌ Deployment failed'
         }
     }
 }
