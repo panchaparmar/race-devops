@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         APP_NAME      = "race-devops"
-        BUILD_DIR     = "dist/race-devops"
+        BUILD_DIR     = "dist/simple-dashboard"
         TARGET_SERVER = "13.205.170.169"      // CHANGE THIS
         TARGET_PATH   = "C:\\App\\race"
     }
