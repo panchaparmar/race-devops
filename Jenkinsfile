@@ -1,10 +1,14 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'nodejs'   // MUST match Global Tool Configuration name
+    }
+
     environment {
         APP_NAME      = "race-devops"
         BUILD_DIR     = "dist/race-devops"
-        TARGET_SERVER = "13.205.170.169"
+        TARGET_SERVER = "13.205.170.169"      // CHANGE THIS
         TARGET_PATH   = "C:\\App\\race"
     }
 
@@ -13,13 +17,6 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
-            }
-        }
-
-        stage('Verify Node & NPM') {
-            steps {
-                bat 'node -v'
-                bat 'npm -v'
             }
         }
 
@@ -35,13 +32,28 @@ pipeline {
             }
         }
 
+        stage('Archive Artifacts') {
+            steps {
+                archiveArtifacts artifacts: "${BUILD_DIR}/**", fingerprint: true
+            }
+        }
+
         stage('Deploy to IIS') {
             when {
                 branch 'main'
             }
             steps {
-                echo 'Deploying to IIS...'
+                echo "Deploying Angular app to IIS..."
             }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline completed successfully'
+        }
+        failure {
+            echo '❌ Pipeline failed'
         }
     }
 }
