@@ -39,46 +39,31 @@ pipeline {
         }
 
         stage('Deploy to IIS') {
-            when {
-                branch 'main'
-            }
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'web01',
-                    usernameVariable: 'DEPLOY_USER',
-                    passwordVariable: 'DEPLOY_PASS'
-                )]) {
-
-                    // Clean target folder on IIS server
-                    bat '''
-                    powershell -NoProfile -Command "
-                        $sec = ConvertTo-SecureString '$env:DEPLOY_PASS' -AsPlainText -Force
-                        $cred = New-Object System.Management.Automation.PSCredential('$env:DEPLOY_USER', $sec)
-
-                        Invoke-Command -ComputerName ${TARGET_SERVER} -Credential $cred -ScriptBlock {
-                            if (!(Test-Path '${TARGET_PATH}')) {
-                                New-Item -ItemType Directory -Path '${TARGET_PATH}'
-                            }
-                            Remove-Item '${TARGET_PATH}\\*' -Recurse -Force -ErrorAction SilentlyContinue
-                        }
-                    "
-                    '''
-
-                    // Copy Angular build files to IIS server
-                    bat '''
-                    xcopy "''' + BUILD_DIR + '''\\*" "\\\\''' + TARGET_SERVER + '''\\C$\\App\\race\\" /E /Y /I
-                    '''
-                }
-            }
-        }
+    when {
+        branch 'main'
     }
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'web01',
+            usernameVariable: 'DEPLOY_USER',
+            passwordVariable: 'DEPLOY_PASS'
+        )]) {
 
-    post {
-        success {
-            echo '✅ Angular app deployed successfully to IIS'
-        }
-        failure {
-            echo '❌ Pipeline failed'
+            bat """
+            powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+            "\$sec = ConvertTo-SecureString '%DEPLOY_PASS%' -AsPlainText -Force; ^
+             \$cred = New-Object System.Management.Automation.PSCredential('%DEPLOY_USER%', \$sec); ^
+             Invoke-Command -ComputerName ${TARGET_SERVER} -Credential \$cred -ScriptBlock { ^
+                 if (!(Test-Path '${TARGET_PATH}')) { ^
+                     New-Item -ItemType Directory -Path '${TARGET_PATH}' | Out-Null ^
+                 }; ^
+                 Remove-Item '${TARGET_PATH}\\*' -Recurse -Force -ErrorAction SilentlyContinue ^
+             }"
+            """
+
+            bat """
+            xcopy "${BUILD_DIR}\\*" "\\\\${TARGET_SERVER}\\C$\\App\\race\\" /E /Y /I
+            """
         }
     }
 }
