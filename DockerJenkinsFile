@@ -82,7 +82,7 @@ stage('Deploy to AKS') {
     '''
   }
 }
-
+}
   post {
     success {
       echo "✅ Deployment Successful"
@@ -91,5 +91,4 @@ stage('Deploy to AKS') {
       echo "❌ Deployment Failed"
     }
   }
-}
 }
