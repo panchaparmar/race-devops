@@ -71,15 +71,17 @@ stage('AKS Get Credentials') {
     '''
   }
 }
-    stage('Deploy to AKS') {
-      steps {
-        sh '''
-          sed -i "s|IMAGE_PLACEHOLDER|$ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG|g" deployment.yaml
-          kubectl apply -f deployment.yaml
-        '''
-      }
-    }
+stage('Deploy to AKS') {
+  steps {
+    sh '''
+      sed -i "s|IMAGE_PLACEHOLDER|$ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG|g" deployment.yaml
+
+      kubectl apply -f deployment.yaml
+      kubectl rollout restart deployment/$IMAGE_NAME
+      kubectl rollout status deployment/$IMAGE_NAME
+    '''
   }
+}
 
   post {
     success {
