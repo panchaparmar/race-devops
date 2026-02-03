@@ -59,7 +59,16 @@ pipeline {
         '''
       }
     }
-
+stage('AKS Get Credentials') {
+  steps {
+    sh '''
+      az aks get-credentials \
+        --resource-group $AKS_RG \
+        --name $AKS_NAME \
+        --overwrite-existing
+    '''
+  }
+}
     stage('Deploy to AKS') {
       steps {
         sh '''
