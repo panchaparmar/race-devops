@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: angular-app
-        image: racedevopsacr.azurecr.io/race-devops:latest
+        image: racedevopsacr.azurecr.io/race-devops:race
         ports:
         - containerPort: 80
         resources:
