@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: angular-app
+  name: racedevops
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: angular-app
+      app: racedevops
   template:
     metadata:
       labels:
-        app: angular-app
+        app: racedevops
     spec:
       containers:
-      - name: angular-app
+      - name: racedevops
         image: racedevopsacr.azurecr.io/racedevops:race
         ports:
         - containerPort: 80
@@ -28,11 +28,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: angular-service
+  name: racedevops-service
 spec:
   type: LoadBalancer
   selector:
-    app: angular-app
+    app: racedevops
   ports:
     - port: 80
       targetPort: 80
