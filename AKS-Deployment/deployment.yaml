@@ -24,4 +24,16 @@ spec:
           limits:
             cpu: "500m"
             memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: angular-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: angular-app
+  ports:
+    - port: 80
+      targetPort: 80
 
