@@ -6,6 +6,8 @@ pipeline {
     IMAGE_NAME      = "racedevops"
     IMAGE_TAG       = "race"
     ACR_LOGIN_SERVER= "racedevopsacr.azurecr.io"
+    AKS_RG         = "RevaDevOps"
+    AKS_NAME       = "racedevops_aks"
 
     AZURE_CLIENT_ID       = credentials('AZURE_CLIENT_ID')
     AZURE_CLIENT_SECRET  = credentials('AZURE_CLIENT_SECRET')
