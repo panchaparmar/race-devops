@@ -15,6 +15,7 @@ spec:
       containers:
       - name: racedevops
         image: racedevopsacr.azurecr.io/racedevops:race
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         resources:
