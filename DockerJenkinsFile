@@ -1,0 +1,81 @@
+pipeline {
+  agent any
+
+  environment {
+    ACR_NAME        = "racedevopsacr"
+    IMAGE_NAME      = "racedevops"
+    IMAGE_TAG       = "race"
+    ACR_LOGIN_SERVER= "racedevopsacr.azurecr.io"
+
+    AZURE_CLIENT_ID       = credentials('AZURE_CLIENT_ID')
+    AZURE_CLIENT_SECRET  = credentials('AZURE_CLIENT_SECRET')
+    AZURE_TENANT_ID      = credentials('AZURE_TENANT_ID')
+    AZURE_SUBSCRIPTION_ID= credentials('AZURE_SUBSCRIPTION_ID')
+  }
+
+  stages {
+
+    stage('Checkout Code') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Azure Login') {
+      steps {
+        sh '''
+          az login --service-principal \
+            -u $AZURE_CLIENT_ID \
+            -p $AZURE_CLIENT_SECRET \
+            --tenant $AZURE_TENANT_ID
+
+          az account set --subscription $AZURE_SUBSCRIPTION_ID
+        '''
+      }
+    }
+
+    stage('ACR Login') {
+      steps {
+        sh '''
+          az acr login --name $ACR_NAME
+        '''
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        sh '''
+          docker build -t $IMAGE_NAME:$IMAGE_TAG .
+          docker tag $IMAGE_NAME:$IMAGE_TAG \
+            $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+        '''
+      }
+    }
+
+    stage('Push Image to ACR') {
+      steps {
+        sh '''
+          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+        '''
+      }
+    }
+
+    stage('Deploy to AKS') {
+      steps {
+        sh '''
+          sed -i "s|IMAGE_PLACEHOLDER|$ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG|g" deployment.yaml
+          kubectl apply -f deployment.yaml
+        '''
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Deployment Successful"
+    }
+    failure {
+      echo "❌ Deployment Failed"
+    }
+  }
+}
