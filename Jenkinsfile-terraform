@@ -66,7 +66,7 @@ pipeline {
                         string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'ARM_SUBSCRIPTION_ID'),
                         string(credentialsId: 'AZURE_TENANT_ID', variable: 'ARM_TENANT_ID')
                     ]) {
-                        sh 'terraform apply -auto-approve tfplan'
+                        sh 'terraform apply'
                     }
                 }
             }
