@@ -1,84 +1,26 @@
 pipeline {
-    agent any
-
-    environment {
-        TF_IN_AUTOMATION = "true"
+  agent any
+  environment {
+    TF_VAR_environment = 'dev'
+  }
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm  // Full repo checkout (disable lightweight)
+      }
     }
-
-    stages {
-
-        stage('Checkout Code') {
-            steps {
-                checkout scm
-            }
+    stage('Terraform') {
+      steps {
+        withCredentials([azureSPN('jenkins-terraform-spn')]) {  // Your SPN ID
+          sh '''
+            which terraform || echo "Terraform not found"
+            terraform --version
+            terraform init -upgrade
+            terraform plan
+            terraform apply -auto-approve
+          '''
         }
-
-        stage('Terraform Init') {
-            steps {
-                dir('terraform') {
-                    withCredentials([
-                        string(credentialsId: 'AZURE_CLIENT_ID', variable: 'ARM_CLIENT_ID'),
-                        string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'ARM_CLIENT_SECRET'),
-                        string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'ARM_SUBSCRIPTION_ID'),
-                        string(credentialsId: 'AZURE_TENANT_ID', variable: 'ARM_TENANT_ID')
-                    ]) {
-                        sh 'terraform init'
-                    }
-                }
-            }
-        }
-
-        stage('Terraform Validate') {
-            steps {
-                dir('terraform') {
-                    sh 'terraform validate'
-                }
-            }
-        }
-
-        stage('Terraform Plan') {
-            steps {
-                dir('terraform') {
-                    withCredentials([
-                        string(credentialsId: 'AZURE_CLIENT_ID', variable: 'ARM_CLIENT_ID'),
-                        string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'ARM_CLIENT_SECRET'),
-                        string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'ARM_SUBSCRIPTION_ID'),
-                        string(credentialsId: 'AZURE_TENANT_ID', variable: 'ARM_TENANT_ID')
-                    ]) {
-                        sh 'terraform plan -out=tfplan'
-                    }
-                }
-            }
-        }
-
-        stage('Approval') {
-            steps {
-                input message: 'Apply Terraform changes?', ok: 'Apply'
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                dir('terraform') {
-                    withCredentials([
-                        string(credentialsId: 'AZURE_CLIENT_ID', variable: 'ARM_CLIENT_ID'),
-                        string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'ARM_CLIENT_SECRET'),
-                        string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'ARM_SUBSCRIPTION_ID'),
-                        string(credentialsId: 'AZURE_TENANT_ID', variable: 'ARM_TENANT_ID')
-                    ]) {
-                        sh 'terraform apply'
-                    }
-                }
-            }
-        }
+      }
     }
-
-    post {
-        success {
-            echo 'Terraform executed successfully 🚀'
-        }
-        failure {
-            echo 'Terraform failed ❌'
-        }
-    }
+  }
 }
