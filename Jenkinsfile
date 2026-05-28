@@ -1,11 +1,4 @@
 
----
-
-# Correct Jenkinsfile
-
-# Copy ONLY this into your actual `Jenkinsfile`:
-
-:::writing{variant="document" id="56184"}
 pipeline {
     agent any
 
@@ -166,12 +159,3 @@ pipeline {
         }
     }
 }
-:::
-
-After updating:
-
-1. Commit Jenkinsfile
-2. Push to `beta` branch
-3. Run Jenkins pipeline again
-
-Your previous syntax error will be resolved.
