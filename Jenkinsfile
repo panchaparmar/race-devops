@@ -3,7 +3,7 @@
 
 # Correct Jenkinsfile
 
-Copy ONLY this into your actual `Jenkinsfile`:
+# Copy ONLY this into your actual `Jenkinsfile`:
 
 :::writing{variant="document" id="56184"}
 pipeline {
