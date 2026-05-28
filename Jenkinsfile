@@ -1,25 +1,32 @@
-```groovy
+
+---
+
+# Correct Jenkinsfile
+
+Copy ONLY this into your actual `Jenkinsfile`:
+
+:::writing{variant="document" id="56184"}
 pipeline {
     agent any
 
     environment {
 
         // ACR
-        ACR_NAME           = "raceacr"
-        ACR_LOGIN_SERVER   = "raceacr.azurecr.io"
+        ACR_NAME = "raceacr"
+        ACR_LOGIN_SERVER = "raceacr.azurecr.io"
 
         // Docker
-        IMAGE_NAME         = "angular-webapp"
-        TAG                = "${BUILD_NUMBER}"
+        IMAGE_NAME = "angular-webapp"
+        TAG = "${BUILD_NUMBER}"
 
         // Azure App Service
-        RESOURCE_GROUP     = "DevOps-Test"
-        APP_NAME           = "race"
+        RESOURCE_GROUP = "DevOps-Test"
+        APP_NAME = "race"
 
         // Azure Credentials
-        AZURE_CLIENT_ID       = credentials('azure-client-id')
-        AZURE_CLIENT_SECRET   = credentials('azure-client-secret')
-        AZURE_TENANT_ID       = credentials('azure-tenant-id')
+        AZURE_CLIENT_ID = credentials('azure-client-id')
+        AZURE_CLIENT_SECRET = credentials('azure-client-secret')
+        AZURE_TENANT_ID = credentials('azure-tenant-id')
         AZURE_SUBSCRIPTION_ID = credentials('azure-subscription-id')
     }
 
@@ -27,6 +34,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
+
                 echo "Checking out source code from GitHub..."
 
                 git branch: 'beta',
@@ -37,6 +45,7 @@ pipeline {
 
         stage('Verify Tools') {
             steps {
+
                 sh '''
                 echo "Docker Version:"
                 docker --version
@@ -49,6 +58,7 @@ pipeline {
 
         stage('Docker Build') {
             steps {
+
                 echo "Building Docker image..."
 
                 sh '''
@@ -60,6 +70,7 @@ pipeline {
 
         stage('Azure Login') {
             steps {
+
                 echo "Logging into Azure..."
 
                 sh '''
@@ -76,6 +87,7 @@ pipeline {
 
         stage('ACR Login') {
             steps {
+
                 echo "Logging into Azure Container Registry..."
 
                 sh '''
@@ -86,6 +98,7 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
+
                 echo "Pushing Docker image to ACR..."
 
                 sh '''
@@ -96,6 +109,7 @@ pipeline {
 
         stage('Deploy to Azure App Service') {
             steps {
+
                 echo "Deploying container to Azure App Service..."
 
                 sh '''
@@ -110,6 +124,7 @@ pipeline {
 
         stage('Restart Azure App Service') {
             steps {
+
                 echo "Restarting Azure App Service..."
 
                 sh '''
@@ -122,6 +137,7 @@ pipeline {
 
         stage('Cleanup Local Docker Images') {
             steps {
+
                 echo "Cleaning up unused Docker images..."
 
                 sh '''
@@ -134,19 +150,28 @@ pipeline {
     post {
 
         success {
+
             echo "======================================"
             echo "Application deployed successfully!"
-            echo "App URL:"
             echo "https://${APP_NAME}.azurewebsites.net"
             echo "======================================"
         }
 
         failure {
+
             echo "======================================"
             echo "Pipeline failed!"
-            echo "Check Jenkins console output."
+            echo "Check Jenkins console logs."
             echo "======================================"
         }
     }
 }
-```
+:::
+
+After updating:
+
+1. Commit Jenkinsfile
+2. Push to `beta` branch
+3. Run Jenkins pipeline again
+
+Your previous syntax error will be resolved.
