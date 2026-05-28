@@ -25,7 +25,8 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'beta',
-                url: 'https://github.com/panchaparmar/race-devops.git'
+                    credentialsId: 'GitHub_User',
+                    url: 'https://github.com/panchaparmar/race-devops.git'
             }
         }
 
