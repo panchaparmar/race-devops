@@ -1,161 +1,103 @@
-
 pipeline {
-    agent any
+agent any
 
-    environment {
+```
+environment {
 
-        // ACR
-        ACR_NAME = "raceacr"
-        ACR_LOGIN_SERVER = "raceacr.azurecr.io"
+    ACR_LOGIN_SERVER = "raceacr.azurecr.io"
 
-        // Docker
-        IMAGE_NAME = "angular-webapp"
-        TAG = "${BUILD_NUMBER}"
+    IMAGE_NAME = "angular-webapp"
 
-        // Azure App Service
-        RESOURCE_GROUP = "DevOps-Test"
-        APP_NAME = "race"
+    TAG = "${BUILD_NUMBER}"
 
-        // Azure Credentials
-        AZURE_CLIENT_ID = credentials('azure-client-id')
-        AZURE_CLIENT_SECRET = credentials('azure-client-secret')
-        AZURE_TENANT_ID = credentials('azure-tenant-id')
-        AZURE_SUBSCRIPTION_ID = credentials('azure-subscription-id')
+    RESOURCE_GROUP = "DevOps-Test"
+
+    APP_NAME = "race"
+}
+
+stages {
+
+    stage('Checkout Code') {
+
+        steps {
+
+            git branch: 'beta',
+                credentialsId: 'GitHub_User',
+                url: 'https://github.com/panchaparmar/race-devops.git'
+        }
     }
 
-    stages {
+    stage('Docker Build') {
 
-        stage('Checkout Code') {
-            steps {
+        steps {
 
-                echo "Checking out source code from GitHub..."
-
-                git branch: 'beta',
-                    credentialsId: 'GitHub_User',
-                    url: 'https://github.com/panchaparmar/race-devops.git'
-            }
+            sh '''
+            docker build \
+              -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG .
+            '''
         }
+    }
 
-        stage('Verify Tools') {
-            steps {
+    stage('ACR Login') {
+
+        steps {
+
+            withCredentials([
+                usernamePassword(
+                    credentialsId: 'acr-credentials',
+                    usernameVariable: 'ACR_USERNAME',
+                    passwordVariable: 'ACR_PASSWORD'
+                )
+            ]) {
 
                 sh '''
-                echo "Docker Version:"
-                docker --version
-
-                echo "Azure CLI Version:"
-                az version
-                '''
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-
-                echo "Building Docker image..."
-
-                sh '''
-                docker build \
-                  -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG .
-                '''
-            }
-        }
-
-        stage('Azure Login') {
-            steps {
-
-                echo "Logging into Azure..."
-
-                sh '''
-                az login --service-principal \
-                  -u $AZURE_CLIENT_ID \
-                  -p $AZURE_CLIENT_SECRET \
-                  --tenant $AZURE_TENANT_ID
-
-                az account set \
-                  --subscription $AZURE_SUBSCRIPTION_ID
-                '''
-            }
-        }
-
-        stage('ACR Login') {
-            steps {
-
-                echo "Logging into Azure Container Registry..."
-
-                sh '''
-                az acr login --name $ACR_NAME
-                '''
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-
-                echo "Pushing Docker image to ACR..."
-
-                sh '''
-                docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG
-                '''
-            }
-        }
-
-        stage('Deploy to Azure App Service') {
-            steps {
-
-                echo "Deploying container to Azure App Service..."
-
-                sh '''
-                az webapp config container set \
-                  --name $APP_NAME \
-                  --resource-group $RESOURCE_GROUP \
-                  --docker-custom-image-name $ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG \
-                  --docker-registry-server-url https://$ACR_LOGIN_SERVER
-                '''
-            }
-        }
-
-        stage('Restart Azure App Service') {
-            steps {
-
-                echo "Restarting Azure App Service..."
-
-                sh '''
-                az webapp restart \
-                  --name $APP_NAME \
-                  --resource-group $RESOURCE_GROUP
-                '''
-            }
-        }
-
-        stage('Cleanup Local Docker Images') {
-            steps {
-
-                echo "Cleaning up unused Docker images..."
-
-                sh '''
-                docker image prune -f
+                echo "$ACR_PASSWORD" | docker login $ACR_LOGIN_SERVER \
+                -u "$ACR_USERNAME" \
+                --password-stdin
                 '''
             }
         }
     }
 
-    post {
+    stage('Push Docker Image') {
 
-        success {
+        steps {
 
-            echo "======================================"
-            echo "Application deployed successfully!"
-            echo "https://${APP_NAME}.azurewebsites.net"
-            echo "======================================"
-        }
-
-        failure {
-
-            echo "======================================"
-            echo "Pipeline failed!"
-            echo "Check Jenkins console logs."
-            echo "======================================"
+            sh '''
+            docker push \
+              $ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG
+            '''
         }
     }
+
+    stage('Deploy Info') {
+
+        steps {
+
+            echo "Image pushed successfully"
+
+            echo "Image URL:"
+            echo "$ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG"
+        }
+    }
+}
+
+post {
+
+    success {
+
+        echo "================================="
+        echo "Docker image pushed successfully"
+        echo "================================="
+    }
+
+    failure {
+
+        echo "================================="
+        echo "Pipeline failed"
+        echo "================================="
+    }
+}
+```
+
 }
