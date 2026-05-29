@@ -1,82 +1,63 @@
 pipeline {
+  agent any
 
-    agent any
+  environment {
+    ACR_NAME        = "racedevopsacr"
+    IMAGE_NAME      = "racedevops"
+    IMAGE_TAG       = "race"
+    ACR_LOGIN_SERVER= "racedevopsacr.azurecr.io"
+    AKS_RG         = "RevaDevOps"
+    AKS_NAME       = "racedevops_aks"
 
-    environment {
+    AZURE_CLIENT_ID       = credentials('AZURE_CLIENT_ID')
+    AZURE_CLIENT_SECRET  = credentials('AZURE_CLIENT_SECRET')
+    AZURE_TENANT_ID      = credentials('AZURE_TENANT_ID')
+    AZURE_SUBSCRIPTION_ID= credentials('AZURE_SUBSCRIPTION_ID')
+  }
 
-        ACR_LOGIN_SERVER = "raceacr.azurecr.io"
+  stages {
 
-        IMAGE_NAME = "angular-webapp"
-
-        TAG = "${BUILD_NUMBER}"
+    stage('Checkout Code') {
+      steps {
+        checkout scm
+      }
     }
 
-    stages {
+    stage('Azure Login') {
+      steps {
+        sh '''
+          az login --service-principal \
+            -u $AZURE_CLIENT_ID \
+            -p $AZURE_CLIENT_SECRET \
+            --tenant $AZURE_TENANT_ID
 
-        stage('Checkout Code') {
-
-            steps {
-
-                git branch: 'beta',
-                    credentialsId: 'GitHub_User',
-                    url: 'https://github.com/panchaparmar/race-devops.git'
-            }
-        }
-
-        stage('Docker Build') {
-
-            steps {
-
-                sh '''
-                docker build \
-                -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG .
-                '''
-            }
-        }
-
-        stage('ACR Login') {
-
-            steps {
-
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'acr-credentials',
-                        usernameVariable: 'ACR_USERNAME',
-                        passwordVariable: 'ACR_PASSWORD'
-                    )
-                ]) {
-
-                    sh '''
-                    echo "$ACR_PASSWORD" | docker login $ACR_LOGIN_SERVER \
-                    -u "$ACR_USERNAME" \
-                    --password-stdin
-                    '''
-                }
-            }
-        }
-
-        stage('Push Docker Image') {
-
-            steps {
-
-                sh '''
-                docker push \
-                $ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG
-                '''
-            }
-        }
+          az account set --subscription $AZURE_SUBSCRIPTION_ID
+        '''
+      }
     }
 
-    post {
-
-        success {
-
-            echo 'Docker image pushed successfully'
-        }
-
-        failure {
-
-            echo 'Pipeline failed'
-        }
+    stage('ACR Login') {
+      steps {
+        sh '''
+          az acr login --name $ACR_NAME
+        '''
+      }
     }
-}
+
+    stage('Build Docker Image') {
+      steps {
+        sh '''
+          docker build -t $IMAGE_NAME:$IMAGE_TAG .
+          docker tag $IMAGE_NAME:$IMAGE_TAG \
+            $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+        '''
+      }
+    }
+
+    stage('Push Image to ACR') {
+      steps {
+        sh '''
+          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+        '''
+      }
+    }
