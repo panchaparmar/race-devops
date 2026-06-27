@@ -1,21 +1,62 @@
-# Node.js
-# Build a general Node.js project with npm.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+# ============================================================
+# Azure DevOps Pipeline — Build & Push to ACR
+# ACR: racedev.azurecr.io
+# ============================================================
 
 trigger:
-- main
+  branches:
+    include:
+      - beta
+      - develop
 
-pool:
-  vmImage: ubuntu-latest
+pr:
+  branches:
+    include:
+      - beta
 
-steps:
-- task: NodeTool@0
-  inputs:
-    versionSpec: '20.x'
-  displayName: 'Install Node.js'
+variables:
+  ACR_SERVICE_CONNECTION: 'racedev-acr-connection'   # ← Your Service Connection name
+  ACR_NAME: 'racedev.azurecr.io'
+  IMAGE_NAME: 'race-app'                             # ← Change to your image name
+  IMAGE_TAG: '$(Build.BuildId)'
 
-- script: |
-    npm install
-    npm run build
-  displayName: 'npm install and build'
+stages:
+- stage: BuildAndPush
+  displayName: '🐳 Build & Push to ACR'
+  jobs:
+  - job: Docker
+    displayName: 'Docker Build & Push'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+
+    # Step 1 — Login to ACR
+    - task: Docker@2
+      displayName: 'Login to ACR'
+      inputs:
+        command: 'login'
+        containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+
+    # Step 2 — Build Docker Image
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        command: 'build'
+        containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+        repository: '$(IMAGE_NAME)'
+        dockerfile: 'Dockerfile'        # ← Path to your Dockerfile
+        buildContext: '.'               # ← Repo root as build context
+        tags: |
+          $(IMAGE_TAG)
+          latest
+
+    # Step 3 — Push to ACR
+    - task: Docker@2
+      displayName: 'Push Image to ACR'
+      inputs:
+        command: 'push'
+        containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+        repository: '$(IMAGE_NAME)'
+        tags: |
+          $(IMAGE_TAG)
+          latest
